@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profit Calendar 2.0</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --surface-2: #f0f1f4;
+    --text: #1c1e26;
+    --text-muted: #6b7280;
+    --border: #e2e4e9;
+    --accent: #4f46e5;
+    --accent-soft: #eef2ff;
+    --today: #4f46e5;
+    --weekend: #ef4444;
+    --holiday: #ef4444;
+    --absence: #0ea5e9;
+    --absence-soft: #e0f2fe;
+    --progress-track: #e5e7eb;
+    --progress-fill: #4f46e5;
+    --shadow: 0 1px 3px rgba(0,0,0,.08), 0 8px 24px rgba(0,0,0,.06);
+    --radius: 14px;
+    --radius-sm: 9px;
+  }
+  html[data-theme="dark"] {
+    --bg: #0f1117;
+    --surface: #181b23;
+    --surface-2: #1f232d;
+    --text: #e7e9ee;
+    --text-muted: #9aa1ad;
+    --border: #2a2f3a;
+    --accent: #818cf8;
+    --accent-soft: #1e2333;
+    --today: #818cf8;
+    --weekend: #f87171;
+    --holiday: #f87171;
+    --absence: #38bdf8;
+    --absence-soft: #10283a;
+    --progress-track: #2a2f3a;
+    --progress-fill: #818cf8;
+    --shadow: 0 1px 3px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.5);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    transition: background .2s, color .2s;
+  }
+
+  .app { max-width: 1500px; margin: 0 auto; padding: 20px clamp(12px, 3vw, 32px) 60px; }
+
+  /* Toolbar */
+  .toolbar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+    margin-bottom: 18px;
+  }
+  .brand {
+    font-size: 20px; font-weight: 800; letter-spacing: -.02em;
+    margin-right: auto; display: flex; align-items: center; gap: 10px;
+  }
+  .brand .logo {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), #a855f7);
+    display: grid; place-items: center; color: #fff; font-size: 16px;
+  }
+
+  button {
+    font: inherit; cursor: pointer; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text);
+    padding: 9px 14px; border-radius: 999px;
+    display: inline-flex; align-items: center; gap: 7px;
+    transition: background .15s, border-color .15s, transform .05s;
+  }
+  button:hover { background: var(--surface-2); }
+  button:active { transform: translateY(1px); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover { filter: brightness(1.06); }
+  button.ghost { background: transparent; }
+  button.icon { padding: 9px; border-radius: 50%; width: 38px; height: 38px; justify-content: center; }
+
+  .segmented { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 3px; gap: 2px; }
+  .segmented button { border: none; background: transparent; border-radius: 999px; padding: 7px 14px; }
+  .segmented button.active { background: var(--surface); box-shadow: var(--shadow); color: var(--accent); font-weight: 600; }
+
+  .year-nav { display: inline-flex; align-items: center; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 3px 4px; }
+  .year-nav .year { font-weight: 700; min-width: 56px; text-align: center; font-variant-numeric: tabular-nums; }
+  .year-nav button { border: none; background: transparent; }
+
+  /* Legend */
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 0 0 16px; font-size: 12.5px; color: var(--text-muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .dot.today { background: var(--today); }
+  .dot.weekend { background: var(--weekend); }
+  .dot.holiday { background: var(--holiday); box-shadow: 0 0 0 2px color-mix(in srgb, var(--holiday) 25%, transparent); }
+  .dot.absence { background: var(--absence); }
+
+  .source-badge { font-size: 12px; color: var(--text-muted); display: inline-flex; align-items: center; gap: 6px; }
+  .source-badge .live { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; }
+  .source-badge.cache .live { background: #f59e0b; }
+  .source-badge.offline .live { background: #ef4444; }
+
+  /* Months grid */
+  .months { display: grid; grid-template-columns: repeat(auto-fill, minmax(258px, 1fr)); gap: 16px; }
+  .months.single { grid-template-columns: minmax(280px, 420px); }
+
+  .month {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 14px 16px; box-shadow: var(--shadow);
+  }
+  .month.is-current { border-color: var(--accent); }
+  .month-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+  .month-name { font-weight: 700; font-size: 15px; letter-spacing: -.01em; }
+  .month-hours { font-size: 12.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .month-hours b { color: var(--accent); }
+
+  .progress { height: 5px; border-radius: 999px; background: var(--progress-track); overflow: hidden; margin: 8px 0 10px; }
+  .progress > i { display: block; height: 100%; background: var(--progress-fill); border-radius: 999px; transition: width .3s; }
+
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  th { font-size: 11px; font-weight: 600; color: var(--text-muted); padding: 4px 0 6px; text-align: center; }
+  th.we { color: var(--weekend); }
+  td { padding: 2px; }
+  .day {
+    position: relative; width: 100%; aspect-ratio: 1 / 1;
+    border: 1px solid transparent; border-radius: var(--radius-sm);
+    background: var(--surface-2); color: var(--text);
+    font-size: 13px; font-variant-numeric: tabular-nums;
+    display: grid; place-items: center; cursor: pointer;
+    transition: background .12s, border-color .12s, transform .05s;
+  }
+  .day:hover { border-color: var(--accent); }
+  .day:active { transform: scale(.96); }
+  .day.empty { background: transparent; cursor: default; }
+  .day.empty:hover { border-color: transparent; }
+  .day.weekend { color: var(--weekend); }
+  .day.holiday { color: var(--holiday); font-weight: 700; }
+  .day.today { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 700; }
+  .day.absence::after {
+    content: ""; position: absolute; top: 4px; right: 4px;
+    width: 6px; height: 6px; border-radius: 50%; background: var(--absence);
+  }
+  .day.absence { box-shadow: inset 0 0 0 2px var(--absence); }
+  .day .hrs {
+    position: absolute; bottom: 2px; left: 0; right: 0; text-align: center;
+    font-size: 8.5px; line-height: 1; color: var(--text-muted); font-weight: 600;
+  }
+  .day.today .hrs { color: rgba(255,255,255,.85); }
+
+  /* Modal / dialog */
+  .backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,.4);
+    backdrop-filter: blur(4px); display: none; z-index: 50;
+    align-items: center; justify-content: center; padding: 16px;
+  }
+  .backdrop.open { display: flex; }
+  .dialog {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 18px; box-shadow: var(--shadow); width: 100%; max-width: 460px;
+    max-height: 88vh; overflow: auto; animation: pop .16s ease-out;
+  }
+  @keyframes pop { from { opacity: 0; transform: translateY(8px) scale(.98); } }
+  .dialog header { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 8px; }
+  .dialog header h2 { margin: 0; font-size: 17px; }
+  .dialog .body { padding: 8px 20px 20px; display: flex; flex-direction: column; gap: 18px; }
+  .field-group h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); margin: 0 0 10px; }
+  .field { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+  .field label { font-size: 14px; }
+  .field input[type="number"], .field select {
+    font: inherit; padding: 8px 10px; border: 1px solid var(--border);
+    border-radius: 9px; background: var(--surface-2); color: var(--text); width: 110px;
+  }
+  .presets { display: inline-flex; gap: 6px; }
+  .presets button { padding: 6px 12px; }
+  .presets button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* Toggle switch */
+  .switch { position: relative; width: 42px; height: 24px; }
+  .switch input { display: none; }
+  .switch .track { position: absolute; inset: 0; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; transition: background .15s; }
+  .switch .thumb { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .15s; }
+  .switch input:checked + .track { background: var(--accent); border-color: var(--accent); }
+  .switch input:checked + .track + .thumb { transform: translateX(18px); }
+
+  .row-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  .hint { font-size: 12px; color: var(--text-muted); margin: -4px 0 0; }
+
+  /* Day popover */
+  .popover {
+    position: absolute; z-index: 60; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow);
+    width: 240px; padding: 12px; animation: pop .12s ease-out;
+  }
+  .popover .pop-title { font-weight: 700; font-size: 14px; margin-bottom: 10px; }
+  .popover .pop-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  .popover .pop-row button { padding: 6px 10px; font-size: 12.5px; flex: 1; justify-content: center; }
+  .popover .pop-row button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .popover .pop-hours { display: flex; align-items: center; gap: 8px; margin: 10px 0; }
+  .popover .pop-hours input { width: 70px; font: inherit; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--text); }
+
+  footer { text-align: center; color: var(--text-muted); font-size: 12px; margin-top: 28px; }
+  footer a { color: var(--accent); text-decoration: none; }
+
+  @media (max-width: 560px) {
+    .brand span.full { display: none; }
+    .toolbar { gap: 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="toolbar">
+    <div class="brand">
+      <span class="logo">📅</span>
+      <span class="full">Profit Calendar <b>2.0</b></span>
+    </div>
+
+    <div class="segmented" id="viewSwitch">
+      <button data-view="month" class="active" data-i18n="view.month">Місяць</button>
+      <button data-view="year" data-i18n="view.year">Рік</button>
+    </div>
+
+    <div class="year-nav">
+      <button class="icon ghost" id="prev" aria-label="Назад">‹</button>
+      <span class="year" id="periodLabel">2026</span>
+      <button class="icon ghost" id="next" aria-label="Вперед">›</button>
+    </div>
+
+    <button id="todayBtn" class="ghost" data-i18n="btn.today">Сьогодні</button>
+    <button id="settingsBtn" class="primary"><span>⚙</span><span data-i18n="btn.settings">Налаштування</span></button>
+  </div>
+
+  <div class="legend">
+    <span><i class="dot today"></i><span data-i18n="legend.today">Сьогодні</span></span>
+    <span><i class="dot weekend"></i><span data-i18n="legend.weekend">Вихідний</span></span>
+    <span><i class="dot holiday"></i><span data-i18n="legend.holiday">Свято</span></span>
+    <span><i class="dot absence"></i><span data-i18n="legend.absence">Відсутність</span></span>
+    <span class="source-badge" id="sourceBadge"><i class="live"></i><span id="sourceText"></span></span>
+  </div>
+
+  <div class="months single" id="content"></div>
+
+  <footer>
+    Profit Calendar 2.0 · <span data-i18n="footer.note">розрахунок робочих годин</span> ·
+    <a href="https://github.com" id="repoLink" target="_blank" rel="noopener">GitHub</a>
+  </footer>
+</div>
+
+<!-- Settings dialog -->
+<div class="backdrop" id="settingsBackdrop">
+  <div class="dialog" role="dialog" aria-modal="true">
+    <header>
+      <h2 data-i18n="settings.title">Налаштування</h2>
+      <button class="icon ghost" id="closeSettings" aria-label="Закрити">✕</button>
+    </header>
+    <div class="body">
+      <div class="field-group">
+        <h3 data-i18n="settings.hours">Робочі години</h3>
+        <div class="field">
+          <label data-i18n="settings.hoursPerDay">Годин на день (стандарт)</label>
+          <input type="number" id="hoursPerDay" min="0" max="24" step="0.5">
+        </div>
+        <div class="field">
+          <label data-i18n="settings.presets">Швидкий вибір</label>
+          <div class="presets" id="hourPresets">
+            <button data-h="8">8</button>
+            <button data-h="6">6</button>
+            <button data-h="4">4</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <h3 data-i18n="settings.week">Робочий тиждень</h3>
+        <div class="field">
+          <label data-i18n="settings.saturday">Робоча субота</label>
+          <label class="switch"><input type="checkbox" id="workSaturday"><span class="track"></span><span class="thumb"></span></label>
+        </div>
+        <div class="field">
+          <label data-i18n="settings.weekStart">Початок тижня</label>
+          <select id="weekStart">
+            <option value="1" data-i18n="settings.monday">Понеділок</option>
+            <option value="0" data-i18n="settings.sunday">Неділя</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <h3 data-i18n="settings.appearance">Вигляд</h3>
+        <div class="field">
+          <label data-i18n="settings.theme">Тема</label>
+          <select id="theme">
+            <option value="system" data-i18n="settings.system">Системна</option>
+            <option value="light" data-i18n="settings.light">Світла</option>
+            <option value="dark" data-i18n="settings.dark">Темна</option>
+          </select>
+        </div>
+        <div class="field">
+          <label data-i18n="settings.language">Мова</label>
+          <select id="language">
+            <option value="uk">Українська</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <h3 data-i18n="settings.data">Дані</h3>
+        <div class="field">
+          <label data-i18n="settings.holidaysSource">Джерело свят</label>
+          <button class="ghost" id="refreshHolidays" data-i18n="settings.refresh">Оновити свята</button>
+        </div>
+        <div class="row-btns">
+          <button class="ghost" id="resetOverrides" data-i18n="settings.resetDays">Скинути дні</button>
+          <button class="ghost" id="exportBtn" data-i18n="settings.export">Експорт</button>
+          <button class="ghost" id="importBtn" data-i18n="settings.import">Імпорт</button>
+        </div>
+        <p class="hint" data-i18n="settings.exportHint">Експорт/імпорт налаштувань у JSON — щоб перенести між ПК.</p>
+        <input type="file" id="importFile" accept="application/json" hidden>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+(function () {
+  // ---------- i18n ----------
+  const I18N = {
+    uk: {
+      "view.month": "Місяць", "view.year": "Рік", "btn.today": "Сьогодні",
+      "btn.settings": "Налаштування", "legend.today": "Сьогодні", "legend.weekend": "Вихідний",
+      "legend.holiday": "Свято", "legend.absence": "Відсутність", "footer.note": "розрахунок робочих годин",
+      "settings.title": "Налаштування", "settings.hours": "Робочі години",
+      "settings.hoursPerDay": "Годин на день (стандарт)", "settings.presets": "Швидкий вибір",
+      "settings.week": "Робочий тиждень", "settings.saturday": "Робоча субота",
+      "settings.weekStart": "Початок тижня", "settings.monday": "Понеділок", "settings.sunday": "Неділя",
+      "settings.appearance": "Вигляд", "settings.theme": "Тема", "settings.system": "Системна",
+      "settings.light": "Світла", "settings.dark": "Темна", "settings.language": "Мова",
+      "settings.data": "Дані", "settings.holidaysSource": "Джерело свят", "settings.refresh": "Оновити свята",
+      "settings.resetDays": "Скинути дні", "settings.export": "Експорт", "settings.import": "Імпорт",
+      "settings.exportHint": "Експорт/імпорт налаштувань у JSON — щоб перенести між ПК.",
+      "src.live": "свята з API", "src.cache": "свята з кешу", "src.offline": "офлайн (вбудовані)",
+      "pop.title": "День", "pop.workday": "Робочий", "pop.absence": "Відсутність",
+      "pop.holiday": "Свято", "pop.reset": "Скинути", "pop.hours": "Годин:",
+      "hours.short": "год", "worked": "відпрацьовано", "of": "з", "left": "залишилось",
+      "months": ["Січень","Лютий","Березень","Квітень","Травень","Червень","Липень","Серпень","Вересень","Жовтень","Листопад","Грудень"],
+      "weekdays": ["Пн","Вт","Ср","Чт","Пт","Сб","Нд"]
+    },
+    en: {
+      "view.month": "Month", "view.year": "Year", "btn.today": "Today",
+      "btn.settings": "Settings", "legend.today": "Today", "legend.weekend": "Weekend",
+      "legend.holiday": "Holiday", "legend.absence": "Absence", "footer.note": "working hours calculator",
+      "settings.title": "Settings", "settings.hours": "Working hours",
+      "settings.hoursPerDay": "Hours per day (default)", "settings.presets": "Quick pick",
+      "settings.week": "Work week", "settings.saturday": "Working Saturday",
+      "settings.weekStart": "Week starts", "settings.monday": "Monday", "settings.sunday": "Sunday",
+      "settings.appearance": "Appearance", "settings.theme": "Theme", "settings.system": "System",
+      "settings.light": "Light", "settings.dark": "Dark", "settings.language": "Language",
+      "settings.data": "Data", "settings.holidaysSource": "Holidays source", "settings.refresh": "Refresh holidays",
+      "settings.resetDays": "Reset days", "settings.export": "Export", "settings.import": "Import",
+      "settings.exportHint": "Export/import settings as JSON to move between computers.",
+      "src.live": "holidays from API", "src.cache": "holidays from cache", "src.offline": "offline (built-in)",
+      "pop.title": "Day", "pop.workday": "Workday", "pop.absence": "Absence",
+      "pop.holiday": "Holiday", "pop.reset": "Reset", "pop.hours": "Hours:",
+      "hours.short": "h", "worked": "worked", "of": "of", "left": "left",
+      "months": ["January","February","March","April","May","June","July","August","September","October","November","December"],
+      "weekdays": ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
+    }
+  };
+
+  // ---------- Storage ----------
+  const NS = "profit-calendar-2";
+  const store = {
+    get(key, def) { try { const v = localStorage.getItem(NS + "_" + key); return v == null ? def : JSON.parse(v); } catch { return def; } },
+    set(key, val) { try { localStorage.setItem(NS + "_" + key, JSON.stringify(val)); } catch {} },
+    del(key) { try { localStorage.removeItem(NS + "_" + key); } catch {} }
+  };
+
+  const DEFAULT_SETTINGS = {
+    defaultHoursPerDay: 8, workSaturday: false, weekStart: 1, theme: "system", language: "uk"
+  };
+  let settings = Object.assign({}, DEFAULT_SETTINGS, store.get("settings", {}));
+  let dayOverrides = store.get("dayOverrides", {}); // { "2026-09-21": { type, hours } }
+  let viewMode = "month";
+  let viewYear = new Date().getFullYear();
+  let viewMonth = new Date().getMonth();
+  let holidayMap = {};     // "YYYY-MM-DD" -> name
+  let holidaySource = "offline";
+
+  function t(key) { return (I18N[settings.language] && I18N[settings.language][key]) ?? key; }
+  function saveSettings() { store.set("settings", settings); }
+  function saveOverrides() { store.set("dayOverrides", dayOverrides); }
+
+  // ---------- Date helpers (no Moment) ----------
+  const now = new Date();
+  const TODAY_KEY = ymd(now.getFullYear(), now.getMonth(), now.getDate());
+
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function ymd(y, m /*0-based*/, d) { return y + "-" + pad(m + 1) + "-" + pad(d); }
+  function daysInMonth(y, m) { return new Date(y, m + 1, 0).getDate(); }
+  // 0=Sun..6=Sat  ->  index within week depending on weekStart
+  function weekColumn(jsDow) { return settings.weekStart === 1 ? (jsDow + 6) % 7 : jsDow; }
+
+  // ---------- Holidays (fixed + movable fallback) ----------
+  function orthodoxEaster(year) {
+    // Meeus Julian algorithm -> Gregorian date of Orthodox Easter
+    const a = year % 4, b = year % 7, c = year % 19;
+    const d = (19 * c + 15) % 30;
+    const e = (2 * a + 4 * b - d + 34) % 7;
+    const month = Math.floor((d + e + 114) / 31);
+    const day = ((d + e + 114) % 31) + 1;
+    const julian = new Date(Date.UTC(year, month - 1, day));
+    julian.setUTCDate(julian.getUTCDate() + 13); // Julian->Gregorian offset (21st century)
+    return julian;
+  }
+  function fallbackHolidays(year) {
+    const map = {};
+    const fixed = {
+      "01-01": "Новий рік", "03-08": "Міжнародний жіночий день",
+      "05-01": "День праці", "06-28": "День Конституції",
+      "07-15": "День Української Державності", "08-24": "День Незалежності",
+      "10-01": "День захисників і захисниць", "12-25": "Різдво Христове"
+    };
+    for (const md in fixed) map[year + "-" + md] = fixed[md];
+    const easter = orthodoxEaster(year);
+    const addDays = (base, n) => { const d = new Date(base); d.setUTCDate(d.getUTCDate() + n); return ymd(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()); };
+    map[addDays(easter, 0)] = "Великдень";
+    map[addDays(easter, 49)] = "Трійця";
+    return map;
+  }
+
+  async function loadHolidays(year) {
+    const cacheKey = "holidays_" + year;
+    const cached = store.get(cacheKey, null);
+    const THIRTY_DAYS = 30 * 24 * 3600 * 1000;
+    if (cached && cached.map && (Date.now() - cached.ts) < THIRTY_DAYS) {
+      holidayMap = cached.map; holidaySource = "cache"; return;
+    }
+    try {
+      const res = await fetch("https://date.nager.at/api/v3/PublicHolidays/" + year + "/UA");
+      if (!res.ok) throw new Error("bad status");
+      const data = await res.json();
+      const map = {};
+      data.forEach(h => { map[h.date] = h.localName || h.name; });
+      if (Object.keys(map).length === 0) throw new Error("empty");
+      holidayMap = map; holidaySource = "live";
+      store.set(cacheKey, { ts: Date.now(), map });
+    } catch {
+      if (cached && cached.map) { holidayMap = cached.map; holidaySource = "cache"; }
+      else { holidayMap = fallbackHolidays(year); holidaySource = "offline"; }
+    }
+  }
+
+  // ---------- Day classification ----------
+  function classifyDay(y, m, d) {
+    const key = ymd(y, m, d);
+    const jsDow = new Date(y, m, d).getDay(); // 0=Sun
+    const isSat = jsDow === 6, isSun = jsDow === 0;
+    const ov = dayOverrides[key];
+
+    let type = "workday";              // workday | weekend | holiday | absence
+    let isWeekendBase = isSun || (isSat && !settings.workSaturday);
+    if (holidayMap[key]) type = "holiday";
+    else if (isWeekendBase) type = "weekend";
+
+    if (ov && ov.type) type = ov.type; // manual override wins
+
+    let hours = 0;
+    if (type === "workday") hours = settings.defaultHoursPerDay;
+    if (ov && typeof ov.hours === "number") hours = ov.hours; // explicit hours override
+
+    return { key, type, hours, isWeekend: isSat || isSun, holidayName: holidayMap[key] || "" };
+  }
+
+  // ---------- Rendering ----------
+  const content = document.getElementById("content");
+
+  function buildMonth(year, month /*0-based*/) {
+    const dim = daysInMonth(year, month);
+    const first = new Date(year, month, 1).getDay();
+    const lead = weekColumn(first);
+
+    let total = 0, worked = 0;
+    const isCurrentMonth = year === now.getFullYear() && month === now.getMonth();
+
+    const cells = [];
+    for (let i = 0; i < lead; i++) cells.push(null);
+    for (let d = 1; d <= dim; d++) {
+      const info = classifyDay(year, month, d);
+      if (info.type === "workday" || (info.hours > 0)) total += info.hours;
+      if (isCurrentMonth && d <= now.getDate()) worked += info.hours;
+      cells.push(info);
+    }
+
+    const monthEl = document.createElement("div");
+    monthEl.className = "month" + (isCurrentMonth ? " is-current" : "");
+
+    const showWorked = isCurrentMonth;
+    let hoursHtml;
+    if (showWorked) hoursHtml = `<b>${fmt(worked)}</b> / ${fmt(total)} ${t("hours.short")}`;
+    else hoursHtml = `${fmt(total)} ${t("hours.short")}`;
+
+    const weekdays = I18N[settings.language].weekdays;
+    const order = settings.weekStart === 1 ? [0,1,2,3,4,5,6] : [6,0,1,2,3,4,5];
+    const thead = order.map(i => {
+      const label = settings.weekStart === 1 ? weekdays[i] : weekdays[(i+6)%7];
+      const isWe = settings.weekStart === 1 ? (i >= 5) : (i === 0 || i === 6);
+      return `<th class="${isWe ? "we" : ""}">${label}</th>`;
+    }).join("");
+
+    let rows = "", row = "";
+    cells.forEach((c, idx) => {
+      if (idx % 7 === 0 && idx > 0) { rows += `<tr>${row}</tr>`; row = ""; }
+      if (!c) { row += `<td><div class="day empty"></div></td>`; return; }
+      const cls = ["day"];
+      if (c.key === TODAY_KEY) cls.push("today");
+      if (c.type === "weekend") cls.push("weekend");
+      if (c.type === "holiday") cls.push("holiday");
+      if (c.type === "absence") cls.push("absence");
+      const title = c.holidayName ? ` title="${escapeHtml(c.holidayName)}"` : "";
+      const hrsBadge = (c.type === "workday" && c.hours !== settings.defaultHoursPerDay) ? `<span class="hrs">${fmt(c.hours)}${t("hours.short")}</span>` : "";
+      row += `<td><button class="${cls.join(" ")}" data-day="${c.key}"${title}>${new Date(year,month,cellDay(idx,lead)).getDate()}${hrsBadge}</button></td>`;
+    });
+    if (row) rows += `<tr>${row}</tr>`;
+
+    const pct = total > 0 && showWorked ? Math.min(100, Math.round(worked / total * 100)) : 0;
+    const progress = showWorked ? `<div class="progress"><i style="width:${pct}%"></i></div>` : "";
+
+    monthEl.innerHTML = `
+      <div class="month-head">
+        <span class="month-name">${I18N[settings.language].months[month]}</span>
+        <span class="month-hours">${hoursHtml}</span>
+      </div>
+      ${progress}
+      <table><thead><tr>${thead}</tr></thead><tbody>${rows}</tbody></table>`;
+    return monthEl;
+  }
+
+  // helper: real day number from cell index
+  function cellDay(idx, lead) { return idx - lead + 1; }
+  function fmt(n) { return Number.isInteger(n) ? n : n.toFixed(1); }
+  function escapeHtml(s) { return s.replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;" }[c])); }
+
+  function render() {
+    content.innerHTML = "";
+    content.className = "months" + (viewMode === "month" ? " single" : "");
+    if (viewMode === "month") {
+      content.appendChild(buildMonth(viewYear, viewMonth));
+      document.getElementById("periodLabel").textContent =
+        I18N[settings.language].months[viewMonth] + " " + viewYear;
+    } else {
+      for (let m = 0; m < 12; m++) content.appendChild(buildMonth(viewYear, m));
+      document.getElementById("periodLabel").textContent = viewYear;
+    }
+    updateSourceBadge();
+  }
+
+  function updateSourceBadge() {
+    const badge = document.getElementById("sourceBadge");
+    badge.className = "source-badge " + holidaySource;
+    document.getElementById("sourceText").textContent = t("src." + holidaySource);
+  }
+
+  // ---------- Theme + i18n apply ----------
+  function applyTheme() {
+    let theme = settings.theme;
+    if (theme === "system") theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    document.documentElement.setAttribute("data-theme", theme);
+  }
+  function applyI18n() {
+    document.documentElement.lang = settings.language;
+    document.querySelectorAll("[data-i18n]").forEach(el => {
+      const key = el.getAttribute("data-i18n");
+      const val = t(key);
+      if (typeof val === "string") el.textContent = val;
+    });
+  }
+
+  // ---------- Day popover ----------
+  let popover = null;
+  function closePopover() { if (popover) { popover.remove(); popover = null; document.removeEventListener("click", onDocClick, true); } }
+  function onDocClick(e) { if (popover && !popover.contains(e.target) && !e.target.closest("[data-day]")) closePopover(); }
+
+  function openPopover(btn, key) {
+    closePopover();
+    const ov = dayOverrides[key] || {};
+    const info = classifyDay(...keyParts(key));
+    popover = document.createElement("div");
+    popover.className = "popover";
+    popover.innerHTML = `
+      <div class="pop-title">${key}${info.holidayName ? " · " + escapeHtml(info.holidayName) : ""}</div>
+      <div class="pop-row" data-role="type">
+        <button data-type="workday">${t("pop.workday")}</button>
+        <button data-type="absence">${t("pop.absence")}</button>
+        <button data-type="holiday">${t("pop.holiday")}</button>
+      </div>
+      <div class="pop-hours"><span>${t("pop.hours")}</span><input type="number" min="0" max="24" step="0.5" id="popHours" value="${info.hours}"><span>${t("hours.short")}</span></div>
+      <div class="pop-row"><button class="ghost" data-role="reset" style="flex:1">${t("pop.reset")}</button></div>`;
+    document.body.appendChild(popover);
+
+    const r = btn.getBoundingClientRect();
+    let left = r.left + window.scrollX;
+    let top = r.bottom + window.scrollY + 6;
+    left = Math.min(left, window.scrollX + document.documentElement.clientWidth - 252);
+    popover.style.left = Math.max(8, left) + "px";
+    popover.style.top = top + "px";
+
+    // mark active type
+    const currentType = ov.type || info.type;
+    popover.querySelectorAll("[data-type]").forEach(b => {
+      if (b.dataset.type === currentType) b.classList.add("active");
+      b.addEventListener("click", () => {
+        dayOverrides[key] = Object.assign({}, dayOverrides[key], { type: b.dataset.type });
+        if (b.dataset.type !== "workday") delete dayOverrides[key].hours;
+        saveOverrides(); closePopover(); render();
+      });
+    });
+    popover.querySelector("#popHours").addEventListener("change", (e) => {
+      const h = Math.max(0, Math.min(24, parseFloat(e.target.value) || 0));
+      dayOverrides[key] = Object.assign({}, dayOverrides[key], { hours: h, type: (dayOverrides[key]?.type) || info.type });
+      saveOverrides(); closePopover(); render();
+    });
+    popover.querySelector("[data-role=reset]").addEventListener("click", () => {
+      delete dayOverrides[key]; saveOverrides(); closePopover(); render();
+    });
+    setTimeout(() => document.addEventListener("click", onDocClick, true), 0);
+  }
+  function keyParts(key) { const [y,m,d] = key.split("-").map(Number); return [y, m-1, d]; }
+
+  content.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-day]");
+    if (!btn) return;
+    e.stopPropagation();
+    openPopover(btn, btn.getAttribute("data-day"));
+  });
+
+  // ---------- Settings dialog wiring ----------
+  const backdrop = document.getElementById("settingsBackdrop");
+  function openSettings() { syncSettingsUI(); backdrop.classList.add("open"); }
+  function closeSettings() { backdrop.classList.remove("open"); }
+  document.getElementById("settingsBtn").addEventListener("click", openSettings);
+  document.getElementById("closeSettings").addEventListener("click", closeSettings);
+  backdrop.addEventListener("click", (e) => { if (e.target === backdrop) closeSettings(); });
+
+  function syncSettingsUI() {
+    document.getElementById("hoursPerDay").value = settings.defaultHoursPerDay;
+    document.getElementById("workSaturday").checked = settings.workSaturday;
+    document.getElementById("weekStart").value = String(settings.weekStart);
+    document.getElementById("theme").value = settings.theme;
+    document.getElementById("language").value = settings.language;
+    document.querySelectorAll("#hourPresets button").forEach(b =>
+      b.classList.toggle("active", Number(b.dataset.h) === settings.defaultHoursPerDay));
+  }
+
+  document.getElementById("hoursPerDay").addEventListener("input", (e) => {
+    settings.defaultHoursPerDay = Math.max(0, Math.min(24, parseFloat(e.target.value) || 0));
+    saveSettings(); syncSettingsUI(); render();
+  });
+  document.getElementById("hourPresets").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-h]"); if (!b) return;
+    settings.defaultHoursPerDay = Number(b.dataset.h);
+    document.getElementById("hoursPerDay").value = settings.defaultHoursPerDay;
+    saveSettings(); syncSettingsUI(); render();
+  });
+  document.getElementById("workSaturday").addEventListener("change", (e) => {
+    settings.workSaturday = e.target.checked; saveSettings(); render();
+  });
+  document.getElementById("weekStart").addEventListener("change", (e) => {
+    settings.weekStart = Number(e.target.value); saveSettings(); render();
+  });
+  document.getElementById("theme").addEventListener("change", (e) => {
+    settings.theme = e.target.value; saveSettings(); applyTheme();
+  });
+  document.getElementById("language").addEventListener("change", (e) => {
+    settings.language = e.target.value; saveSettings(); applyI18n(); render();
+  });
+  document.getElementById("refreshHolidays").addEventListener("click", async () => {
+    store.del("holidays_" + viewYear);
+    await loadHolidays(viewYear); render();
+  });
+  document.getElementById("resetOverrides").addEventListener("click", () => {
+    dayOverrides = {}; saveOverrides(); render();
+  });
+
+  // Export / Import
+  document.getElementById("exportBtn").addEventListener("click", () => {
+    const data = { settings, dayOverrides, version: 2 };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "profit-calendar-settings.json";
+    a.click(); URL.revokeObjectURL(a.href);
+  });
+  const importFile = document.getElementById("importFile");
+  document.getElementById("importBtn").addEventListener("click", () => importFile.click());
+  importFile.addEventListener("change", (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        if (data.settings) settings = Object.assign({}, DEFAULT_SETTINGS, data.settings);
+        if (data.dayOverrides) dayOverrides = data.dayOverrides;
+        saveSettings(); saveOverrides();
+        applyTheme(); applyI18n(); syncSettingsUI(); render();
+      } catch { alert("Invalid file"); }
+    };
+    reader.readAsText(file);
+    importFile.value = "";
+  });
+
+  // ---------- Toolbar wiring ----------
+  document.getElementById("viewSwitch").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-view]"); if (!b) return;
+    viewMode = b.dataset.view;
+    document.querySelectorAll("#viewSwitch button").forEach(x => x.classList.toggle("active", x === b));
+    render();
+  });
+  async function shift(dir) {
+    if (viewMode === "month") {
+      viewMonth += dir;
+      if (viewMonth < 0) { viewMonth = 11; viewYear--; await loadHolidays(viewYear); }
+      else if (viewMonth > 11) { viewMonth = 0; viewYear++; await loadHolidays(viewYear); }
+    } else {
+      viewYear += dir; await loadHolidays(viewYear);
+    }
+    render();
+  }
+  document.getElementById("prev").addEventListener("click", () => shift(-1));
+  document.getElementById("next").addEventListener("click", () => shift(1));
+  document.getElementById("todayBtn").addEventListener("click", async () => {
+    viewYear = now.getFullYear(); viewMonth = now.getMonth(); viewMode = "month";
+    document.querySelectorAll("#viewSwitch button").forEach(x => x.classList.toggle("active", x.dataset.view === "month"));
+    await loadHolidays(viewYear); render();
+  });
+
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if (settings.theme === "system") applyTheme(); });
+
+  // ---------- Init ----------
+  (async function init() {
+    applyTheme(); applyI18n(); syncSettingsUI();
+    await loadHolidays(viewYear);
+    render();
+  })();
+})();
+</script>
+</body>
+</html>
