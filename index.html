@@ -130,13 +130,14 @@
   th.we { color: var(--weekend); }
   td { padding: 2px; }
   .day {
-    position: relative; width: 100%; aspect-ratio: 1 / 1;
+    position: relative; width: 100%; aspect-ratio: 1 / 1; padding: 0;
     border: 1px solid transparent; border-radius: var(--radius-sm);
     background: var(--surface-2); color: var(--text);
     font-size: 13px; font-variant-numeric: tabular-nums;
     display: grid; place-items: center; cursor: pointer;
     transition: background .12s, border-color .12s, transform .05s;
   }
+  .day .num { line-height: 1; }
   .day:hover { border-color: var(--accent); }
   .day:active { transform: scale(.96); }
   .day.empty { background: transparent; cursor: default; }
@@ -176,8 +177,10 @@
   .field label { font-size: 14px; }
   .field input[type="number"], .field select {
     font: inherit; padding: 8px 10px; border: 1px solid var(--border);
-    border-radius: 9px; background: var(--surface-2); color: var(--text); width: 110px;
+    border-radius: 9px; background: var(--surface-2); color: var(--text);
   }
+  .field input[type="number"] { width: 90px; }
+  .field select { min-width: 130px; max-width: 190px; }
   .presets { display: inline-flex; gap: 6px; }
   .presets button { padding: 6px 12px; }
   .presets button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
@@ -528,7 +531,7 @@
       if (c.type === "absence") cls.push("absence");
       const title = c.holidayName ? ` title="${escapeHtml(c.holidayName)}"` : "";
       const hrsBadge = (c.type === "workday" && c.hours !== settings.defaultHoursPerDay) ? `<span class="hrs">${fmt(c.hours)}${t("hours.short")}</span>` : "";
-      row += `<td><button class="${cls.join(" ")}" data-day="${c.key}"${title}>${new Date(year,month,cellDay(idx,lead)).getDate()}${hrsBadge}</button></td>`;
+      row += `<td><button class="${cls.join(" ")}" data-day="${c.key}"${title}><span class="num">${new Date(year,month,cellDay(idx,lead)).getDate()}</span>${hrsBadge}</button></td>`;
     });
     if (row) rows += `<tr>${row}</tr>`;
 
