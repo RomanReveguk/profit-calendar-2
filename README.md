@@ -1,5 +1,7 @@
 # Profit Calendar 2.0
 
+**🔗 Відкрити застосунок: https://romanreveguk.github.io/profit-calendar-2/**
+
 Сучасний робочий календар із розрахунком робочих годин на місяць. Показує норму годин, скільки вже відпрацьовано, враховує святкові дні України та дозволяє гнучко налаштовувати години.
 
 > Переосмислена версія [profit-calendar](https://igorsegodin.github.io/profit-calendar/) — сучасний вигляд, теми, налаштування годин та автоматичні свята.
@@ -24,14 +26,11 @@
 
 Просто відкрий `index.html` у браузері. Жодної збірки чи залежностей — це один HTML-файл на vanilla JS.
 
-## Публікація на GitHub Pages
+## Онлайн-версія
 
-1. Створи репозиторій на GitHub (напр. `profit-calendar-2`) і залий у нього вміст цієї папки.
-2. **Settings → Pages → Build and deployment**: Source = *Deploy from a branch*, Branch = `main`, папка = `/ (root)`.
-3. Через ~хвилину застосунок буде доступний за адресою:
-   `https://<твій-username>.github.io/profit-calendar-2/`
+Застосунок опубліковано через GitHub Pages і доступний з будь-якого ПК за адресою:
 
-Ця лінка відкривається з будь-якого ПК — як і попередній календар.
+**https://romanreveguk.github.io/profit-calendar-2/**
 
 ## Технології
 
